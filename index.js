@@ -1,55 +1,59 @@
-const fs=require('fs');
-const cors=require('cors');
-const express=require("express");
-const app=express();
+// loading required modules
+const { format } = require("date-fns");
+const fs = require("fs");
+const fsPromises = require("fs").promises;
+const path = require("path");
+const express = require("express");
+const app = express();
+const cors = require("cors");
 
 app.use(cors());
+app.use(express.json());
+// creating time stamp for file
+const currentDateStamp = `Date-${format(
+  new Date(),
+  "dd-MMM-yyyy"
+)}\t Time-${format(new Date(), "HH:mm:ss")}`;
 
-//0. Home Page FILE SYSTEM
-app.get("/", (request, response) => {
-    response.send("NODE.JS FILE SYSTEM TASK  ");
-    response.json({
-        message:`/create->To CREATE .txt file`,
-        message:`/->To READ .txt file`
-        })
-  });
-    
+//creating variable file to store text file
+let textFileInFolder = [];
 
-//1. To Create .txt file
-app.get("/create",function (req,res){
-    var timestamp=new Date();
-    var filename=timestamp.getDate()+"-"+timestamp.getHours()+timestamp.getMinutes()+timestamp.getSeconds();    
-    fs.writeFile(`${filename}.txt`,`${timestamp}`,()=>{
-        console.log("File Creation Done Sucessfully")
+// creating function for loading folder & files
+const logEvents = async (currentDateStamp) => {
+  const dateTime = `${format(new Date(), "dd-MMM-yyyy")}_time_${format(
+    new Date(),
+    "HH-mm-ss"
+  )}`;
+  try {
+    if (!fs.existsSync(path.join(__dirname, "logs"))) {
+      await fsPromises.mkdir(path.join(__dirname, "logs"));
     }
+    await fsPromises.writeFile(
+      path.join(__dirname, "logs", `${dateTime}.txt`),
+      currentDateStamp
     );
-    res.json({ message:`${filename}.txt File Created `,
-               filename:`${filename}.txt`,
-            })
-    
-})
-//2. To READ all txt_files
-
-app.get("/read",function (req,res){
-    var txt_files=[];
-    fs.readdir(__dirname, function (err, files) {
-        //error
-        if (err) {
-            return console.log('Unable to scan directory: ' + err);
-        } 
-        
-        files.forEach(function (file) {
-            if(file.endsWith(".txt")){
-                txt_files.push(file);
-            }     
-        });
-        res.json({
-            file_names:txt_files
-        })
+    fs.readdir(path.join(__dirname, "logs"), (err, files) => {
+      if (err) {
+        console.error(err);
+      }
+      files.forEach((file) => {
+        if (path.extname(file, path.basename(file)) == ".txt") {
+          textFileInFolder.push(file);
+        }
+      });
     });
-    
-})
+  } catch (error) {
+    console.error(error);
+  }
+};
 
-app.listen(process.env.PORT||3010,()=>{
-    console.log("App listening at port-3010 ");
-})
+//calling function for creating folder & file with time stamp
+logEvents(currentDateStamp);
+
+//creating endpoint
+app.get("/", function (req, res) {
+  res.send(textFileInFolder);
+});
+
+//creating local server for listening on port 3000
+app.listen(3000);
